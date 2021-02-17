@@ -4,7 +4,9 @@ class imageProcess{
 
   // private property
   private $width;
-  private $hight;
+  private $height;
+  private $image;
+  private $image_type;
 
   public function __construct(){
 
@@ -17,69 +19,50 @@ class imageProcess{
       $_POST = filter_input_array(INPUT_POST, FILTER_SANITIZE_STRING);
       // get input
       $image_name = $_FILES['image']['name'];
-      $image_type = $_FILES['image']['type'];
-      $image_size = $_FILES['image']['size'];
-
-      // check file type
-      if($image_type == 'image/jpg' || $image_type == 'image/png'){
-        // process image
-      }else{
-        // throw an error
-        die('Image not file type required');
-      }
-      
+      // load image
+      $this->loadImage($image_name);
+      // crop image squre
+      $this->cropImageSquare($image_name);
+      // save image
+      $this->save();
     }else{
 
     }
   }
 
-  // resize image propotionately
-  private function resizeImage($image, $width, $height){
-    $info = getimagesize($image);
-    $mime = $info['mime'];
+  private function loadImage($file){
+    // get image info
+    $image_info = getimagesize($file);
 
-    switch ($mime) {
-            case 'image/jpeg':
-                    $image_create_func = 'imagecreatefromjpeg';
-                    $image_save_func = 'imagejpeg';
-                    $new_image_ext = 'jpg';
-                    break;
+    // get image size
+    list($width, $height) = $image_info;
+    $this->width = $width;
+    $this->height = $height;
 
-            case 'image/png':
-                    $image_create_func = 'imagecreatefrompng';
-                    $image_save_func = 'imagepng';
-                    $new_image_ext = 'png';
-                    break;
+    // get file type
+    $this->image_type = $image_info[2];
 
-            case 'image/gif':
-                    $image_create_func = 'imagecreatefromgif';
-                    $image_save_func = 'imagegif';
-                    $new_image_ext = 'gif';
-                    break;
-
-            default: 
-                    throw new Exception('Unknown image type.');
+    // check image type ONLY JPG and PNG
+    if($this->image_type == IMAGETYPE_JPEG){
+      $this->image = imagecreatefromjpeg($file);
+    }elseif($this->image_type == IMAGETYPE_PNG){
+      $this->image = imagecreatefrompng($file);
     }
-
-    $img = $image_create_func($originalFile);
-    list($width, $height) = getimagesize($originalFile);
-
-    $newHeight = ($height / $width) * $newWidth;
-    $tmp = imagecreatetruecolor($newWidth, $newHeight);
-    imagecopyresampled($tmp, $img, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-
-    if (file_exists($targetFile)) {
-            unlink($targetFile);
-    }
-    $image_save_func($tmp, "$targetFile.$new_image_ext");
+    
   }
+
+  function resize($width,$height) {
+    // create resized image
+    $new_image = imagecreatetruecolor($width, $height);
+    // Copy and resize part of an image
+    imagecopyresampled($new_image, $this->image, 0, 0, 0, 0, $width, $height, $this->width, $this->height);
+    // load image in variable
+    $this->image = $new_image;
+ }
 
   // crop to max width or hight
   private function cropImage($image, $w, $h){
     // check file type
-
-
-    $im = imagecreatefrompng('example.png');
     $im2 = imagecrop($im, ['x' => 0, 'y' => 0, 'width' => $w, 'height' => $h]);
     if ($im2 !== FALSE) {
         imagepng($im2, 'example-cropped.png');
@@ -113,11 +96,12 @@ class imageProcess{
     }
   }
 
-  private function checkImageType($image){
-
+  private function save($path, $file){
+    // 
+    if(move_uploaded_file($path, $file)){
+      return true;
+    }else{
+      return false;
+    }
   }
 }
-
-// list($width, $height) = getimagesize($_FILES['image']['name']);
-
-// echo 'width : '. $width; 
